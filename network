@@ -1,0 +1,193 @@
+#!/bin/sh
+# This script configures support for ethernet cards needed during
+# installation for an NFS install.
+#
+# Normally this automatically loads an image from the ISO, and if
+# it cannot be found tries to load a floppy disk.
+#
+# You may also give a path to the network.dsk image, like this:
+# network /some/exact/path/network.dsk
+#
+
+echo
+echo "Network support for NFS install, 23-Sep-2004 volkerdi@slackware.com"
+echo
+
+# To use a different floppy drive, set this variable first.
+if [ "$FLOPPY" = "" ]; then
+  FLOPPY="/dev/fd0"
+fi
+USEDFLOP=false
+
+# Make a mount directory:
+mkdir -p /network
+
+# First, we need to mount the network supplemental disk.
+while [ 0 ]; do
+  if [ -r /network/scripts/network.sh ]; then
+    umount /network
+  fi
+
+  unset UMOUNTCDROM
+
+  # Allow specifying the network.dsk image on the command line:
+  if [ ! "$1" = "" ]; then
+    echo -n "Searching for network.dsk in $1... "
+    if [ -r $1 ]; then
+      mount -o loop -o ro $1 /network
+      echo "found."
+      break
+    else
+      echo "not found."
+    fi
+  fi
+
+  echo -n "Searching for network.dsk in /cdrom/isolinux/... "
+  if [ -r /cdrom/isolinux/network.dsk ]; then
+    mount -o loop -o ro /cdrom/isolinux/network.dsk /network
+    echo "found."
+    break
+  else
+    echo "not found."
+  fi
+
+  echo -n "Searching for network.dsk in /cdrom/rootdisks/... "
+  if [ -r /cdrom/rootdisks/network.dsk ]; then
+    mount -o loop -o ro /cdrom/rootdisks/network.dsk /network
+    echo "found."
+    break
+  else
+    echo "not found."
+  fi
+
+  echo "Attempting to mount CD-ROM..."
+
+  # IDE device search:
+  for device in \
+    /dev/hdd /dev/hdc /dev/hdb /dev/hda /dev/hde /dev/hdf /dev/hdg /dev/hdh \
+    ; do
+    mount -o ro -t iso9660 $device /var/log/mount 1> /dev/null 2> /dev/null
+    if [ $? = 0 ]; then
+      UMOUNTCDROM=$device
+      break
+    fi
+  done
+  # SCSI device search:
+  if [ "$UMOUNTCDROM" = "" ]; then
+    for device in \
+      /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3 \
+      ; do
+      mount -o ro -t iso9660 $device /var/log/mount 1> /dev/null 2> /dev/null
+      if [ $? = 0 ]; then
+        UMOUNTCDROM=$device
+        break
+      fi
+    done
+  fi
+  # Long shot:
+  if [ "$UMOUNTCDROM" = "" ]; then
+    for device in \
+      /dev/pcd0 /dev/pcd1 /dev/pcd2 /dev/pcd3 \
+      ; do
+      mount -o ro -t iso9660 $device /var/log/mount 1> /dev/null 2> /dev/null
+      if [ $? = 0 ]; then
+        UMOUNTCDROM=$device
+        break
+      fi
+    done
+  fi
+
+  echo -n "Searching for network.dsk in /cdrom/isolinux/... "
+  if [ -r /cdrom/isolinux/network.dsk ]; then
+    mount -o loop -o ro /cdrom/isolinux/network.dsk /network
+    echo "found."
+    break
+  else
+    echo "not found."
+  fi
+
+  echo -n "Searching for network.dsk in /cdrom/rootdisks/... "
+  if [ -r /cdrom/rootdisks/network.dsk ]; then
+    mount -o loop -o ro /cdrom/rootdisks/network.dsk /network
+    echo "found."
+    break
+  else
+    echo "not found."
+  fi
+
+  echo
+  echo "Loading network.dsk from floppy disk."
+  echo
+  echo "Please insert the network supplemental diskette (network.dsk), "
+  echo -n "and hit [enter] to continue."
+  read inputjunk;
+  echo
+  mount -t vfat $FLOPPY /network
+  if [ ! -r /network/scripts/network.sh ]; then
+    echo "ERROR:  /network/scripts/network.sh not found."
+    echo
+    echo "This does not appear to be the correct disk.  Please make sure"
+    echo "the network supplemental diskette (network.dsk) is in the floppy"
+    echo "drive, and hit enter to continue, or control-c to abort."
+    echo
+    if mount | fgrep network 1> /dev/null 2> /dev/null ; then
+      umount /network
+    fi
+  else
+    # Looks correct, but lets check the kernel version:
+    if [ ! -d /network/lib/modules/`uname -r` ]; then
+      echo "WARNING:"
+      echo "Can't find directory /network/lib/modules/`uname -r` on"
+      echo "disk.  This disk may be designed for use with a different Linux"
+      echo "kernel version than the one on your bootdisk.  This is the"
+      echo "module directory we found:"
+      echo "  `echo /network/lib/modules/*`"
+      echo "This disk is not likely to work with your kernel."
+      echo "Press enter to continue anyway, or Q to quit."
+      read inputjunk;
+      if [ "$inputjunk" = "q" -o "$inputjunk" = "Q" ]; then
+        umount /network
+        exit
+      fi
+    fi
+    # If we made it here, then all should be well.
+    break
+  fi
+done
+
+# Now, let's call the network.sh script on the floppy disk to actually
+# do most of the work:
+
+if [ -r /network/scripts/network.sh ]; then
+  sh /network/scripts/network.sh
+fi
+
+# Now, try to make sure that /network gets unmounted...
+for try in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 ; do
+  umount /network
+  if mount | grep "on /network " 1> /dev/null 2> /dev/null ; then
+    BAD=verybad
+  else
+    # good!
+    break
+  fi
+  sleep 5
+done
+rmdir /network
+
+if [ ! "$UMOUNTCDROM" = "" ]; then
+  echo "Unmounting CD-ROM..."
+  umount /var/log/mount
+fi
+
+if [ "$USEDFLOP" = "true" ]; then
+  echo
+  echo "You may now remove the network supplemental disk."
+fi
+
+echo
+echo "The next step in your installation may be partitioning your hard drive"
+echo "(if you're installing to a Linux partition) with 'fdisk' or 'cfdisk'"
+echo "(the menu-driven version of fdisk).  If you already have a partition"
+echo "prepared for Linux, run 'setup' to start the installer program."
+echo

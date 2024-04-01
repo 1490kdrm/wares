@@ -1,0 +1,228 @@
+#!/bin/sh
+# This script configures support for PCMCIA and/or Cardbus cards needed during
+# installation, such as a CD-ROM drive or an ethernet card used for an NFS
+# install.
+
+echo
+echo "PCMCIA/Cardbus support script, 2003-02-18 volkerdi@slackware.com"
+echo
+
+# To use a different floppy drive, set this variable first.
+if [ "$FLOPPY" = "" ]; then
+  FLOPPY="/dev/fd0"
+fi
+USEDFLOP=false
+
+# Make a mount directory:
+mkdir -p /pcmcia
+
+# First, we need to mount the PCMCIA supplemental disk.
+while [ 0 ]; do
+  if [ -r /pcmcia/etc/pcmcia/config.opts ]; then
+    umount /pcmcia
+  fi
+
+  unset UMOUNTCDROM
+
+  echo -n "Searching for pcmcia.dsk in /cdrom/isolinux/... "
+  if [ -r /cdrom/isolinux/pcmcia.dsk ]; then 
+    mount -o loop -o ro /cdrom/isolinux/pcmcia.dsk /pcmcia
+    echo "found."
+    break
+  else
+    echo "not found."
+  fi
+
+  echo -n "Searching for pcmcia.dsk in /cdrom/rootdisks/... "
+  if [ -r /cdrom/rootdisks/pcmcia.dsk ]; then
+    mount -o loop -o ro /cdrom/rootdisks/pcmcia.dsk /pcmcia
+    echo "found."
+    break
+  else
+    echo "not found."
+  fi
+
+  echo "Attempting to mount CD-ROM..."
+
+  # IDE device search:
+  for device in \
+    /dev/hdd /dev/hdc /dev/hdb /dev/hda /dev/hde /dev/hdf /dev/hdg /dev/hdh \
+    ; do
+    mount -o ro -t iso9660 $device /var/log/mount 1> /dev/null 2> /dev/null
+    if [ $? = 0 ]; then
+      UMOUNTCDROM=$device
+      break
+    fi
+  done
+  # SCSI device search:
+  if [ "$UMOUNTCDROM" = "" ]; then
+    for device in \
+      /dev/sr0 /dev/sr1 /dev/sr2 /dev/sr3 \
+      ; do
+      mount -o ro -t iso9660 $device /var/log/mount 1> /dev/null 2> /dev/null
+      if [ $? = 0 ]; then
+        UMOUNTCDROM=$device
+        break
+      fi
+    done
+  fi
+  # Long shot:
+  if [ "$UMOUNTCDROM" = "" ]; then
+    for device in \
+      /dev/pcd0 /dev/pcd1 /dev/pcd2 /dev/pcd3 \
+      ; do
+      mount -o ro -t iso9660 $device /var/log/mount 1> /dev/null 2> /dev/null
+      if [ $? = 0 ]; then
+        UMOUNTCDROM=$device
+        break
+      fi
+    done
+  fi
+
+  echo -n "Searching for pcmcia.dsk in /cdrom/isolinux/... "
+  if [ -r /cdrom/isolinux/pcmcia.dsk ]; then
+    mount -o loop -o ro /cdrom/isolinux/pcmcia.dsk /pcmcia
+    echo "found."
+    break
+  else
+    echo "not found."
+  fi
+
+  echo -n "Searching for pcmcia.dsk in /cdrom/rootdisks/... "
+  if [ -r /cdrom/rootdisks/pcmcia.dsk ]; then
+    mount -o loop -o ro /cdrom/rootdisks/pcmcia.dsk /pcmcia
+    echo "found."
+    break
+  else
+    echo "not found."
+  fi
+
+  echo
+  echo "Loading pcmcia.dsk from floppy disk."
+  echo
+  echo "Please insert the PCMCIA supplemental diskette (pcmcia.dsk), "
+  echo -n "and hit [enter] to continue."
+  read inputjunk;
+  echo
+  mount -t vfat $FLOPPY /pcmcia
+  if [ ! -r /pcmcia/etc/pcmcia/config.opts ]; then
+    echo "ERROR:  /pcmcia/etc/pcmcia/config.opts not found."
+    echo
+    echo "This does not appear to be the correct disk.  Please make sure"
+    echo "the PCMCIA supplemental diskette (pcmcia.dsk) is in the floppy"
+    echo "drive, and hit enter to continue, or control-c to abort."
+    echo
+    if mount | fgrep pcmcia 1> /dev/null 2> /dev/null ; then
+      umount /pcmcia
+    fi
+  else
+    # Looks correct, but lets check the kernel version:
+    if [ ! -d /pcmcia/lib/modules/`uname -r`/pcmcia ]; then
+      echo "WARNING:"
+      echo "Can't find directory /pcmcia/lib/modules/`uname -r`/pcmcia on"
+      echo "disk.  This disk may be designed for use with a different Linux"
+      echo "kernel version than the one on your bootdisk.  This is the"
+      echo "PCMCIA module directory we found:"
+      echo "  `echo /pcmcia/lib/modules/*/pcmcia`"
+      echo "You might as well look for the bareapm.i bootdisk of the correct"
+      echo "kernel version, or an updated pcmcia.dsk image.  This disk is not"
+      echo "likely to work with your kernel.  Press control-c to abort."
+      umount /pcmcia
+      read inputjunk;
+    fi
+    # If we made it here, then all should be well.
+    USEDFLOP=true
+    break
+  fi
+done
+
+# now, set up the support:
+( cd /lib
+  if [ -d modules ]; then
+    mv modules modules.olddir
+  elif [ -L modules ]; then
+    rm -f modules
+  fi
+  ln -sf /pcmcia/lib/modules .
+)
+( cd /sbin
+  for file in /pcmcia/sbin/* ; do
+    if [ -L `basename $file` ]; then
+      rm `basename $file`
+    fi
+    if [ ! -r `basename $file` ]; then
+      ln -sf $file .
+    fi
+  done
+)
+( cd /etc
+  rm -f pcmcia
+  ln -sf /pcmcia/etc/pcmcia .
+)
+
+# OK, here goes nothing:
+/pcmcia/scripts/rc.pcmcia start
+
+# Now, the last step.  To be able to umount the floppy, we have to kill cardmgr
+# first.  Luckily, once all the PCMCIA modules have been loaded by cardmgr, it
+# doesn't need to be there for things to continue working. :)
+
+echo
+echo
+echo "The PCMCIA/Cardbus subsystem is now installed.  Please make sure that"
+echo "all of the cards you'll need for the installation are in the machine."
+echo "If you still need to insert any PCMCIA/Cardbus cards, do that now.  Once"
+echo "the drive stops (indicating that all needed modules have been"
+echo -n "loaded), then press [enter] to continue."
+read inputjunk
+echo
+
+# OK, this is a little tricky.
+echo "Cleaning up..."
+sleep 10 
+# Get rid of rmmod.  It causes trouble. :)
+if [ -L /sbin/rmmod ]; then
+  mv /sbin/rmmod /sbin/rmmod.disabled
+fi
+# Kill cardmgr with a hard kill so it doesn't even try to unload anything
+/bin/killall -9 cardmgr
+# Now, try to make sure that /pcmcia gets unmounted...
+for try in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 ; do
+  umount /pcmcia
+  if mount | grep "on /pcmcia " 1> /dev/null 2> /dev/null ; then
+    BAD=verybad
+  else
+    # good!
+    break
+  fi
+  sleep 5
+done
+rmdir /pcmcia
+
+if [ ! "$UMOUNTCDROM" = "" ]; then
+  echo "Unmounting CD-ROM..."
+  umount /var/log/mount
+fi
+
+if [ -L /sbin/rmmod.disabled ]; then
+  mv /sbin/rmmod.disabled /sbin/rmmod
+fi
+
+# Restore old modules:
+if [ -L /lib/modules ]; then
+  rm -f /lib/modules
+fi
+if [ -d /lib/modules.olddir ]; then
+  mv /lib/modules.olddir /lib/modules
+fi
+
+if [ "$USEDFLOP" = "true" ]; then
+  echo
+  echo "You may now remove the PCMCIA supplemental disk."
+fi
+echo
+echo "The next step in your installation may be partitioning your hard drive"
+echo "(if you're installing to a Linux partition) with 'fdisk' or 'cfdisk'"
+echo "(the menu-driven version of fdisk).  If you already have a partition"
+echo "prepared for Linux, run 'setup' to start the installer program."
+echo
