@@ -1,0 +1,41 @@
+/lib/modules/2.4.32/kernel/drivers/ieee1394/ieee1394.o.gz:
+
+/lib/modules/2.4.32/kernel/drivers/ieee1394/ohci1394.o.gz:	/lib/modules/2.4.32/kernel/drivers/ieee1394/ieee1394.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/ieee1394/sbp2.o.gz:	/lib/modules/2.4.32/kernel/drivers/ieee1394/ieee1394.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/input/evdev.o.gz:	/lib/modules/2.4.32/kernel/drivers/input/input.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/input/input.o.gz:
+
+/lib/modules/2.4.32/kernel/drivers/input/joydev.o.gz:	/lib/modules/2.4.32/kernel/drivers/input/input.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/input/keybdev.o.gz:	/lib/modules/2.4.32/kernel/drivers/input/input.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/input/mousedev.o.gz:	/lib/modules/2.4.32/kernel/drivers/input/input.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/usb/hid.o.gz:	/lib/modules/2.4.32/kernel/drivers/input/input.o.gz \
+	/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/usb/host/ehci-hcd.o.gz:	/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/usb/host/hc_sl811.o.gz:	/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/usb/host/sl811.o.gz:	/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/usb/host/uhci.o.gz:	/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/usb/host/usb-ohci.o.gz:	/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/usb/host/usb-uhci.o.gz:	/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/usb/storage/usb-storage.o.gz:	/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz:
+
+/lib/modules/2.4.32/kernel/drivers/usb/usbkbd.o.gz:	/lib/modules/2.4.32/kernel/drivers/input/input.o.gz \
+	/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz
+
+/lib/modules/2.4.32/kernel/drivers/usb/usbmouse.o.gz:	/lib/modules/2.4.32/kernel/drivers/input/input.o.gz \
+	/lib/modules/2.4.32/kernel/drivers/usb/usbcore.o.gz
+
